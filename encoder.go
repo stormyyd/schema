@@ -23,14 +23,29 @@ func NewEncoder() *Encoder {
 // Encode encodes a struct into map[string][]string.
 //
 // Intended for use with url.Values.
-func (e *Encoder) Encode(src interface{}, dst map[string][]string) error {
-	v := reflect.ValueOf(src)
+func (e *Encoder) Encode(src any, dst map[string][]string) error {
+	values, err := e.EncodeValues(src)
+	if err != nil {
+		return err
+	}
+	for _, p := range values {
+		dst[p.Key] = append(dst[p.Key], p.Value)
+	}
+	return nil
+}
 
-	return e.encode(v, dst)
+func (e *Encoder) EncodeValues(src any) (UrlValues, error) {
+	v := reflect.ValueOf(src)
+	values := UrlValues{}
+
+	if err := e.encode(v, &values); err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 // RegisterEncoder registers a converter for encoding a custom type.
-func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value) string) {
+func (e *Encoder) RegisterEncoder(value any, encoder func(reflect.Value) string) {
 	e.regenc[reflect.TypeOf(value)] = encoder
 }
 
@@ -75,7 +90,7 @@ func isZero(v reflect.Value) bool {
 	return v.Interface() == z.Interface()
 }
 
-func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
+func (e *Encoder) encode(v reflect.Value, values *UrlValues) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -94,7 +109,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 
 		// Encode struct pointer types if the field is a valid pointer and a struct.
 		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) {
-			err := e.encode(v.Field(i).Elem(), dst)
+			err := e.encode(v.Field(i).Elem(), values)
 			if err != nil {
 				errors[v.Field(i).Elem().Type().String()] = err
 			}
@@ -110,12 +125,12 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 				continue
 			}
 
-			dst[name] = append(dst[name], value)
+			*values = append(*values, UrlValue{Key: name, Value: value})
 			continue
 		}
 
 		if v.Field(i).Type().Kind() == reflect.Struct {
-			err := e.encode(v.Field(i), dst)
+			err := e.encode(v.Field(i), values)
 			if err != nil {
 				errors[v.Field(i).Type().String()] = err
 			}
@@ -136,9 +151,8 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		dst[name] = []string{}
 		for j := 0; j < v.Field(i).Len(); j++ {
-			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+			*values = append(*values, UrlValue{Key: name, Value: encFunc(v.Field(i).Index(j))})
 		}
 	}
 

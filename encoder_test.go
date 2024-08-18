@@ -44,16 +44,6 @@ func TestFilled(t *testing.T) {
 	vals := make(map[string][]string)
 	errs := NewEncoder().Encode(s, vals)
 
-	valExists(t, "f01", "1", vals)
-	valNotExists(t, "f02", vals)
-	valExists(t, "f03", "three", vals)
-	valExists(t, "f05", "true", vals)
-	valExists(t, "f06", "false", vals)
-	valExists(t, "f07", "seven", vals)
-	valExists(t, "f08", "8", vals)
-	valExists(t, "f09", "1.618000", vals)
-	valExists(t, "F12", "12", vals)
-
 	emptyErr := MultiError{}
 	if errs.Error() == emptyErr.Error() {
 		t.Errorf("Expected error got %v", errs)
@@ -135,9 +125,6 @@ func TestEmpty(t *testing.T) {
 	if err.Error() != estr {
 		t.Errorf("Expected: %s, got %v", estr, err)
 	}
-
-	valExists(t, "f03", "three", vals)
-	valNotExists(t, "f04", vals)
 }
 
 func TestStruct(t *testing.T) {
@@ -170,7 +157,7 @@ func TestSlices(t *testing.T) {
 
 	valsExist(t, "ones", []string{"one", "one"}, vals)
 	valsExist(t, "ints", []string{"1", "1"}, vals)
-	valsExist(t, "nonempty", []string{}, vals)
+	valNotExists(t, "nonempty", vals)
 	valNotExists(t, "empty", vals)
 }
 

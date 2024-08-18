@@ -1,3 +1,3 @@
-module github.com/gorilla/schema
+module github.com/stormyyd/schema
 
-go 1.20
+go 1.23
